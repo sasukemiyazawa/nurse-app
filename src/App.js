@@ -1,17 +1,22 @@
 import axios from "axios";
+import { Button } from "@mui/material";
+import ShiftTable from "./ShiftTable";
+import { useState } from "react";
 function App() {
-  const base_url = "http://localhost:8000"
-  // const filePass = "Documents/2024前期/プロ通/pulp_practice2.ipynb"
-  // const token = "token 80b59460699e50616d082f1b938061d1cf33f3d6748554f8"
+  const base_url = "http://localhost:8000";
+  const [data, setData] = useState("");
+
   const getNotebook = () => {
-    axios.get(base_url)
-      .then((res) => {
-        console.log(res)
-      })
-  }
+    axios.get(base_url).then((res) => {
+      console.log(res);
+      setData(res.data);
+    });
+  };
   return (
     <div className="App">
-     <button onClick={getNotebook}>push</button>
+      {data ? <ShiftTable data={data} /> : <></>}
+      <Button onClick={getNotebook}>Get Data</Button>
+      <Button onClick={() => setData()}>Clear</Button>
     </div>
   );
 }
