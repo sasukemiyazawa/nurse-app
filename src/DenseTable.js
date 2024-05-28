@@ -7,27 +7,26 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 
-export default function DenseTable({ data }) {
-  const arr = ["月", "火", "水", "木", "金", "土", "日","月", "火", "水", "木", "金", "土", "日"]
+export default function DenseTable({ data, num }) {
+  const arr = ["日", "月", "火", "水", "木", "金", "土"];
   return (
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 650 }} size="small" aria-label="a dense table">
         <TableHead>
           <TableRow>
             <TableCell>勤務表</TableCell>
-            {[...Array(14)].map((value, index) => {
-              console.log(index);
+            {[...Array(31)].map((value, index) => {
+              // console.log(index);
               return <TableCell align="right">{index + 1}日</TableCell>;
             })}
           </TableRow>
           <TableRow>
             <TableCell>曜日</TableCell>
-            {
-            arr.map((value, index) => {
-              console.log(index);
-              return <TableCell align="right">{value}</TableCell>;
-            })
-            }
+            {[...Array(31)].map((value, index) => {
+              const day = (Number(num) + index)%7
+              // index===0 ? console.log(num+index) : console.log("")
+              return <TableCell align="right">{arr[day]}</TableCell>;
+            })}
           </TableRow>
         </TableHead>
         <TableBody>
