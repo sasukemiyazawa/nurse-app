@@ -2,16 +2,14 @@ import axios from "axios";
 import {
   Button,
   Container,
+  TextField,
   ThemeProvider,
   Typography,
   createTheme,
 } from "@mui/material";
 import DenseTable from "./DenseTable";
 import { useState } from "react";
-import { FormControl } from "@mui/material";
-import { InputLabel } from "@mui/material";
-import { NativeSelect } from "@mui/material";
-function App() {
+function Ga() {
   /*
   TODO: 最低限のデザイン...
   TODO: 日付から月ごとの日数と曜日の算出
@@ -21,12 +19,47 @@ function App() {
 
   const baseURL = "http://localhost:8000";
   const [data, setData] = useState("");
+  const [email, setEmail] = useState("");
+  const [gen, setGen] = useState(1);
 
-  const getData = () => {
-    axios.get(baseURL).then((res) => {
-      console.log(res);
-      setData(res.data);
-    });
+  const getToken = () => {
+    const url = baseURL + "/token";
+    axios
+      .get(url)
+      .then((res) => console.log(res))
+      .catch((e) => alert("エラー"));
+  };
+  const mail = () => {
+    const url = baseURL + "/mail";
+    axios
+      .get(url)
+      .then((res) => console.log(res))
+      .catch((e) => alert("エラー"));
+  };
+
+  const ga = () => {
+    const url = baseURL + "/ga";
+    axios
+      .get(url)
+      .then((res) => console.log(res))
+      .catch((e) => alert("エラー"));
+  };
+
+  const postData = () => {
+    const emailData = { email: email };
+    const url = baseURL + "/test";
+    const config = {
+      headers: {}, //ヘッダーは空にしないとエラーになる
+    };
+    axios
+      .post(url, emailData, config)
+      .then((res) => {
+        console.log(res);
+        // alert("投稿に成功しました！")
+      })
+      .catch((err) => {
+        alert("曜日を選択してください");
+      });
   };
 
   const theme = createTheme({
@@ -38,13 +71,20 @@ function App() {
   //送信データ作成
   const createFormData = () => {
     const formData = new FormData();
-    formData.append("firstday", num);
+    formData.append("email", email);
+    formData.append("gen", gen);
     // console.log(num)
     return formData;
   };
+
+  const createData = () => {
+    const data = new Blob([JSON.stringify({ email: email })]);
+    return data;
+  };
+
   //投稿
   const sendFormData = async () => {
-    const url = baseURL + "/posts";
+    const url = baseURL + "/ga";
     const data = await createFormData();
     const config = {
       headers: {}, //ヘッダーは空にしないとエラーになる
@@ -53,11 +93,12 @@ function App() {
       .post(url, data, config)
       .then((res) => {
         console.log(res);
-        // alert("投稿に成功しました！")
-        setData(res.data);
+        alert("生成までしばらくお待ちください");
+        setEmail("");
+        setGen();
       })
       .catch((err) => {
-        alert("曜日を選択してください");
+        alert(err);
       });
   };
 
@@ -68,7 +109,7 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <>
       <ThemeProvider theme={theme}>
         <Typography variant="h2" sx={{ mb: "5rem" }}>
           ナーススケジューリング課題
@@ -90,7 +131,7 @@ function App() {
         ) : (
           <div>
             <Typography>
-              数理最適化を用いて以下の4つの制約の下，シフト表を作成します．
+              遺伝的アルゴリズムを用いて以下の3つの制約の下，シフト表を作成します．
             </Typography>
             <Typography>
               制約１：平日は６人のナースが日勤、１人のナースが夜勤すること．土日は２人のナースが日勤、１人のナースが夜勤
@@ -98,49 +139,35 @@ function App() {
             <Typography>
               制約２：ナース１人あたりの勤務は２０回以内であること．
             </Typography>
+            <Typography>制約３：夜勤の次の日は出勤しないこと．</Typography>
             <Typography>
-              制約３：ナース１人あたりの夜勤は５回以内にすること．
-            </Typography>
-            <Typography>制約４：夜勤の次の日は出勤しないこと．</Typography>
-            <Typography>
-              シフトを作成したい月の1日の曜日を選択してください．
+              シフト表生成ボタンをクリックしてください．生成に時間がかかるため，処理が終了したらメールが送信されます．
             </Typography>
             <Container
-              sx={{ display: "flex", justifyContent: "flex-start", ml: "1rem", mt: "3rem"}}
+              sx={{
+                display: "flex",
+                justifyContent: "flex-start",
+                ml: "1rem",
+                mt: "3rem",
+              }}
             >
-              <FormControl>
-                <InputLabel variant="standard" htmlFor="uncontrolled-native">
-                  曜日を選択
-                </InputLabel>
-                <NativeSelect
-                  defaultValue={-1}
-                  inputProps={{
-                    name: "曜日を選択",
-                    id: "uncontrolled-native",
-                  }}
-                  onChange={(event) => hundleChange(event.target.value)}
-                  sx={{ width: "15rem" }}
-                >
-                  <option value={-1}>選択してください</option>
-                  <option value={1}>月曜日</option>
-                  <option value={2}>火曜日</option>
-                  <option value={3}>水曜日</option>
-                  <option value={4}>木曜日</option>
-                  <option value={5}>金曜日</option>
-                  <option value={6}>土曜日</option>
-                  <option value={0}>日曜日</option>
-                </NativeSelect>
-              </FormControl>
+              <TextField
+                placeholder="Emailを入力"
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                placeholder="世代数を入力"
+                onChange={(e) => setGen(e.target.value)}
+              />
               <Button onClick={sendFormData} sx={{ mr: "0px" }}>
-                作成
+                <Typography>シフト表作成</Typography>
               </Button>
             </Container>
           </div>
         )}
-        {/* <Button onClick={getData}>Get Data</Button> */}
       </ThemeProvider>
-    </div>
+    </>
   );
 }
 
-export default App;
+export default Ga;
