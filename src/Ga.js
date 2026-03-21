@@ -6,106 +6,90 @@ import {
   ThemeProvider,
   Typography,
   createTheme,
+  LinearProgress,
+  Box,
 } from "@mui/material";
 import DenseTable from "./DenseTable";
 import { useState } from "react";
-function Ga() {
-  /*
-  TODO: 最低限のデザイン...
-  TODO: 日付から月ごとの日数と曜日の算出
-  TODO: 手動でのシフト変更
-  TODO: github.ioなどにデプロイ
-  */
 
+function Ga() {
   const baseURL = "http://localhost:8000";
-  const [data, setData] = useState("");
+  const [data, setData] = useState(null); // シフト表本体 (result)
+  const [nod, setNod] = useState([]); // 各ナースの勤務日数
+  const [nosD, setNosD] = useState([]); // 各日の日勤人数
+  const [nosN, setNosN] = useState([]); // 各日の夜勤人数
   const [email, setEmail] = useState("");
   const [gen, setGen] = useState(1);
-
-  const getToken = () => {
-    const url = baseURL + "/token";
-    axios
-      .get(url)
-      .then((res) => console.log(res))
-      .catch((e) => alert("エラー"));
-  };
-  const mail = () => {
-    const url = baseURL + "/mail";
-    axios
-      .get(url)
-      .then((res) => console.log(res))
-      .catch((e) => alert("エラー"));
-  };
-
-  const ga = () => {
-    const url = baseURL + "/ga";
-    axios
-      .get(url)
-      .then((res) => console.log(res))
-      .catch((e) => alert("エラー"));
-  };
-
-  const postData = () => {
-    const emailData = { email: email };
-    const url = baseURL + "/test";
-    const config = {
-      headers: {}, //ヘッダーは空にしないとエラーになる
-    };
-    axios
-      .post(url, emailData, config)
-      .then((res) => {
-        console.log(res);
-        // alert("投稿に成功しました！")
-      })
-      .catch((err) => {
-        alert("曜日を選択してください");
-      });
-  };
+  const [firstday, setFirstday] = useState(0); // 開始曜日
+  const [progress, setProgress] = useState(0);
+  const [jobId, setJobId] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
 
   const theme = createTheme({
-    typography: {
-      fontFamily: ["Noto Sans JP"],
-    },
+    typography: { fontFamily: ["Noto Sans JP"] },
   });
 
-  //送信データ作成
   const createFormData = () => {
     const formData = new FormData();
     formData.append("email", email);
     formData.append("gen", gen);
-    // console.log(num)
+    formData.append("firstday", firstday);
     return formData;
   };
 
-  const createData = () => {
-    const data = new Blob([JSON.stringify({ email: email })]);
-    return data;
-  };
+  const startGA = async () => {
+    const formData = createFormData();
+    const url = baseURL + "/ga/start";
+    const config = { headers: {} };
 
-  //投稿
-  const sendFormData = async () => {
-    const url = baseURL + "/ga";
-    const data = await createFormData();
-    const config = {
-      headers: {}, //ヘッダーは空にしないとエラーになる
-    };
-    axios
-      .post(url, data, config)
-      .then((res) => {
-        console.log(res);
-        alert("生成までしばらくお待ちください");
-        setEmail("");
-        setGen();
-      })
-      .catch((err) => {
-        alert(err);
-      });
-  };
+    try {
+      const res = await axios.post(url, formData, config);
 
-  const [num, setNum] = useState();
-  const hundleChange = (num) => {
-    setNum(num);
-    console.log(num);
+      // ✅ jobIdはローカル変数で持つ（stateの非同期更新を避ける）
+      const currentJobId = res.data.job_id;
+      setJobId(currentJobId);
+      setProgress(0);
+      setIsRunning(true);
+
+      // ✅ ポーリング開始
+      const timer = setInterval(async () => {
+        try {
+          const status = await axios.get(
+            baseURL + `/ga/status/${currentJobId}`,
+          );
+          setProgress(status.data.progress);
+
+          if (status.data.status === "done") {
+            clearInterval(timer);
+            setIsRunning(false);
+
+            const result = await axios.get(
+              baseURL + `/ga/result/${currentJobId}`,
+            );
+            const r = result.data;
+
+            // ✅ DenseTableに必要なデータをそれぞれstateに保存
+            setData(r.result);
+            setNod(r.num_of_day);
+            setNosD(r.num_of_day_shift);
+            setNosN(r.num_of_night_shift);
+          }
+
+          if (status.data.status === "error") {
+            clearInterval(timer);
+            setIsRunning(false);
+            alert("GAでエラーが発生しました: " + status.data.error);
+          }
+        } catch (err) {
+          clearInterval(timer);
+          setIsRunning(false);
+          alert("ステータス取得エラー: " + err);
+        }
+      }, 1000);
+    } catch (err) {
+      setIsRunning(false);
+      alert("送信エラー: " + err);
+    }
   };
 
   return (
@@ -114,14 +98,24 @@ function Ga() {
         <Typography variant="h2" sx={{ mb: "5rem" }}>
           ナーススケジューリング課題
         </Typography>
+
         {data ? (
           <>
-            <DenseTable data={data} num={num} />
-
+            {/* ✅ DenseTableに必要なpropsをすべて渡す */}
+            <DenseTable
+              data={data}
+              firstday={firstday}
+              nod={nod}
+              nosD={nosD}
+              nosN={nosN}
+            />
             <Button
               onClick={() => {
-                setData();
-                setNum();
+                setData(null);
+                setNod([]);
+                setNosD([]);
+                setNosN([]);
+                setProgress(0);
               }}
               sx={{ ml: "96vw" }}
             >
@@ -141,8 +135,9 @@ function Ga() {
             </Typography>
             <Typography>制約３：夜勤の次の日は出勤しないこと．</Typography>
             <Typography>
-              シフト表生成ボタンをクリックしてください．生成に時間がかかるため，処理が終了したらメールが送信されます．
+              シフト表生成ボタンをクリックしてください．生成に時間がかかりますが，進捗バーで進行状況を確認できます．
             </Typography>
+
             <Container
               sx={{
                 display: "flex",
@@ -151,18 +146,32 @@ function Ga() {
                 mt: "3rem",
               }}
             >
-              <TextField
+              {/* <TextField
                 placeholder="Emailを入力"
                 onChange={(e) => setEmail(e.target.value)}
-              />
+              /> */}
               <TextField
                 placeholder="世代数を入力"
                 onChange={(e) => setGen(e.target.value)}
               />
-              <Button onClick={sendFormData} sx={{ mr: "0px" }}>
-                <Typography>シフト表作成</Typography>
+              {/* <TextField
+                placeholder="開始曜日(0=日〜6=土)"
+                onChange={(e) => setFirstday(e.target.value)}
+              /> */}
+              <Button onClick={startGA} disabled={isRunning} sx={{ mr: "0px" }}>
+                <Typography>
+                  {isRunning ? "生成中..." : "シフト表作成"}
+                </Typography>
               </Button>
             </Container>
+
+            {/* ✅ 進捗表示（実行中のみ表示） */}
+            {isRunning && (
+              <Box sx={{ mt: 4, ml: "1rem", width: "60%" }}>
+                <Typography>進捗: {progress}%</Typography>
+                <LinearProgress variant="determinate" value={progress} />
+              </Box>
+            )}
           </div>
         )}
       </ThemeProvider>

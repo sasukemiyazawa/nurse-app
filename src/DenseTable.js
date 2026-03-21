@@ -6,59 +6,53 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import {
-  Container,
-  TableFooter,
-  TextField,
-  Typography,
-  Button,
-} from "@mui/material";
-import { useState, useEffect } from "react";
-
-//FIXME: Warning: Each child in a list should have a unique "key" props
+import { Container, Typography } from "@mui/material";
 
 export default function DenseTable({ data, firstday, nod, nosD, nosN }) {
-  const [n, setN] = useState(0);
-  const [d, setD] = useState(0);
-  const [w, setW] = useState(0);
-  const [numbers, setNumbers] = useState([0,0,0]);
-  const update = () => {};
   const arr = ["日", "月", "火", "水", "木", "金", "土"];
 
+  // バックエンドと完全一致する曜日計算
+  const getWeekday = (d, firstday) => {
+    return (Number(firstday) + (d - 1)) % 7;
+  };
+
+  const isWeekend = (d, firstday) => {
+    const weekday = getWeekday(d, firstday);
+    return weekday === 0 || weekday === 6;
+  };
 
   return (
-    <Container
-      style={{ maxWidth: "100%", m: 0, padding: 0, marginBottom: "3rem" }}
-    >
+    <Container style={{ maxWidth: "100%", padding: 0, marginBottom: "3rem" }}>
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} size="small" aria-label="a dense table">
+        <Table sx={{ minWidth: 650 }} size="small">
           <TableHead>
+            {/* 日付 */}
             <TableRow>
               <TableCell style={{ background: "#e0e0e0" }}>日付</TableCell>
-              {[...Array(31)].map((value, index) => {
-                // console.log(index);
-                return (
-                  <TableCell align="center" style={{ background: "#e0e0e0" }}>
-                    {index + 1}
-                  </TableCell>
-                );
-              })}
+              {[...Array(31)].map((_, index) => (
+                <TableCell key={index} align="center" style={{ background: "#e0e0e0" }}>
+                  {index + 1}
+                </TableCell>
+              ))}
               <TableCell align="center" style={{ background: "#e0e0e0" }}>
                 勤務日数
               </TableCell>
             </TableRow>
+
+            {/* 曜日 */}
             <TableRow>
               <TableCell style={{ background: "#bdbdbd" }}>曜日</TableCell>
-              {[...Array(31)].map((value, index) => {
-                const day = (Number(firstday) + index) % 7;
-                // index===0 ? console.log(num+index) : console.log("")
-                return day === 0 || day === 6 ? (
-                  <TableCell align="center" style={{ background: "#42a5f5" }}>
-                    {arr[day]}
-                  </TableCell>
-                ) : (
-                  <TableCell align="center" style={{ background: "#bdbdbd" }}>
-                    {arr[day]}
+              {[...Array(31)].map((_, index) => {
+                const weekday = getWeekday(index + 1, firstday);
+                const weekend = weekday === 0 || weekday === 6;
+
+                return (
+                  <TableCell
+                    key={index}
+                    align="center"
+                    style={{ background: weekend ? "#42a5f5" : "#bdbdbd" }}
+                  >
+                    {arr[weekday]}
                   </TableCell>
                 );
               })}
@@ -67,73 +61,64 @@ export default function DenseTable({ data, firstday, nod, nosD, nosN }) {
               </TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
-            {Object.keys(data).map((key, value, index) => (
-              <TableRow
-                key={key}
-                sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-              >
-                <TableCell component="th" scope="row">
-                  {/* {key} */}
-                  {
-                    <TextField
-                      id="standard-basic"
-                      label={key}
-                      variant="standard"
-                      key={index}
-                    />
-                  }
-                </TableCell>
-                {data[key].map((index, key) => (
-                  <TableCell align="center" key={key}>
-                    {/* {index == " /" ? "休み" : index == " D" ? "日勤" : "夜勤"} */}
-                    {index}
+            {/* ナースごとのシフト */}
+            {Object.keys(data).map((key, nurseIndex) => (
+              <TableRow key={key}>
+                <TableCell>{key}</TableCell>
+
+                {data[key].map((shift, dayIndex) => (
+                  <TableCell key={dayIndex} align="center">
+                    {shift}
                   </TableCell>
                 ))}
-                {nod[value] < 20 ? (
-                  <TableCell align="center">{nod[value]}</TableCell>
-                ) : (
-                  <TableCell align="center" style={{ background: "#ff5722" }}>
-                    {nod[value]}
-                  </TableCell>
-                )}
+
+                {/* 勤務日数 */}
+                <TableCell
+                  align="center"
+                  style={nod[nurseIndex] > 20 ? { background: "#ff5722" } : {}}
+                >
+                  {nod[nurseIndex]}
+                </TableCell>
               </TableRow>
             ))}
 
-            <TableRow
-              sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-            >
+            {/* 日勤人数 */}
+            <TableRow>
               <TableCell>勤務人数(日)</TableCell>
-              {Object.keys(nosD).map((key, index) => {
-                const day = (Number(firstday) + index) % 7;
-                // console.log(key)
-                return day === 6 || day === 0 ? (
-                  nosD[key] === 2 ? (
-                    <TableCell align="center">{nosD[key]}</TableCell>
-                  ) : (
-                    <TableCell align="center" style={{ background: "#ff5722" }}>
-                      {nosD[key]}
-                    </TableCell>
-                  )
-                ) : nosD[key] === 6 ? (
-                  <TableCell align="center">{nosD[key]}</TableCell>
-                ) : (
-                  <TableCell align="center" style={{ background: "#ff5722" }}>
-                    {nosD[key]}
+              {nosD.map((count, index) => {
+                const d = index + 1;
+                const weekend = isWeekend(d, firstday);
+
+                // バックエンドと同じ制約
+                const ok = weekend ? count === 2 : count === 6;
+
+                return (
+                  <TableCell
+                    key={index}
+                    align="center"
+                    style={ok ? {} : { background: "#ff5722" }}
+                  >
+                    {count}
                   </TableCell>
                 );
               })}
               <TableCell align="center">----</TableCell>
             </TableRow>
+
+            {/* 夜勤人数 */}
             <TableRow>
               <TableCell>勤務人数(夜)</TableCell>
-              {Object.keys(nosN).map((key, index) => {
-                // console.log(key)
-                return nosN[key] === 1 ? (
-                  <TableCell align="center">{nosN[key]}</TableCell>
-                ) : (
-                  <TableCell align="center" style={{ background: "#ff5722" }}>
-                    {nosN[key]}
+              {nosN.map((count, index) => {
+                const ok = count === 1;
+                return (
+                  <TableCell
+                    key={index}
+                    align="center"
+                    style={ok ? {} : { background: "#ff5722" }}
+                  >
+                    {count}
                   </TableCell>
                 );
               })}
@@ -142,40 +127,10 @@ export default function DenseTable({ data, firstday, nod, nosD, nosN }) {
           </TableBody>
         </Table>
       </TableContainer>
+
       <Typography color={"#ff5722"}>
         制約違反がある箇所は赤色で表示されます
       </Typography>
-      <Typography
-        style={{ display: "flex", justifyContent: "flex-end", right: "1rem" }}
-      >
-        D: 日勤
-      </Typography>
-      <Typography
-        style={{ display: "flex", justifyContent: "flex-end", right: "1rem" }}
-      >
-        N: 夜勤
-      </Typography>
-      <Typography
-        style={{ display: "flex", justifyContent: "flex-end", right: "1rem" }}
-      >
-        /: 休み
-      </Typography>
-
-      {/* <Container
-        sx={{
-          display: "flex",
-          justifyContent: "flex-start",
-          ml: "1rem",
-          mt: "3rem",
-        }}
-      >
-        <TextField placeholder="ナースの番号を入力" />
-        <TextField placeholder="日付を入力" />
-        <TextField placeholder="勤務形態を入力" />
-        <Button onClick={update} sx={{ mr: "0px" }}>
-          <Typography>更新</Typography>
-        </Button>
-      </Container> */}
     </Container>
   );
 }

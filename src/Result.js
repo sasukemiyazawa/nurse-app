@@ -20,7 +20,7 @@ const Result = () => {
       .then((res) => {
         console.log(res);
         setData(res.data.result);
-        setNod(res.data.num_of_days);
+        setNod(res.data.num_of_day);
         setNosD(res.data.num_of_day_shift);
         setNosN(res.data.num_of_night_shift);
       })

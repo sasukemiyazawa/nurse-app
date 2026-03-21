@@ -22,14 +22,14 @@ const router = createBrowserRouter([
     path: "/",
     element: 
     <>
-      <Link to={"suchi"}>数値解析(閉鎖中)</Link>,
+      <Link to={"suchi"}>数値解析</Link>,
       <Link to={"ga"}>遺伝的アルゴリズム</Link>
     </>
   },
-  // {
-  //   path: "/suchi",
-  //   element: <App />
-  // },
+  {
+    path: "/suchi",
+    element: <App />
+  },
   {
     path: "/ga",
     element: <Ga />

@@ -8,26 +8,16 @@ import {
 } from "@mui/material";
 import DenseTable from "./DenseTable";
 import { useState } from "react";
-import { FormControl } from "@mui/material";
-import { InputLabel } from "@mui/material";
-import { NativeSelect } from "@mui/material";
+import { FormControl, InputLabel, NativeSelect } from "@mui/material";
+
 function App() {
-  /*
-  TODO: 最低限のデザイン...
-  TODO: 日付から月ごとの日数と曜日の算出
-  TODO: 手動でのシフト変更
-  TODO: github.ioなどにデプロイ
-  */
-
   const baseURL = "http://localhost:8000";
-  const [data, setData] = useState("");
 
-  const getData = () => {
-    axios.get(baseURL).then((res) => {
-      console.log(res);
-      setData(res.data);
-    });
-  };
+  const [data, setData] = useState("");
+  const [nod, setNod] = useState([]);
+  const [nosD, setNosD] = useState([]);
+  const [nosN, setNosN] = useState([]);
+  const [num, setNum] = useState();
 
   const theme = createTheme({
     typography: {
@@ -35,36 +25,34 @@ function App() {
     },
   });
 
-  //送信データ作成
-  const createFormData = () => {
-    const formData = new FormData();
-    formData.append("firstday", num);
-    // console.log(num)
-    return formData;
-  };
-  //投稿
-  const sendFormData = async () => {
-    const url = baseURL + "/posts";
-    const data = await createFormData();
-    const config = {
-      headers: {}, //ヘッダーは空にしないとエラーになる
-    };
-    axios
-      .post(url, data, config)
-      .then((res) => {
-        console.log(res);
-        // alert("投稿に成功しました！")
-        setData(res.data);
-      })
-      .catch((err) => {
-        alert("曜日を選択してください");
-      });
-  };
-
-  const [num, setNum] = useState();
   const hundleChange = (num) => {
     setNum(num);
-    console.log(num);
+  };
+
+  // /posts の送信
+  const sendFormData = async () => {
+    const url = baseURL + "/posts";
+    const formData = new FormData();
+    formData.append("firstday", num);
+
+    axios
+      .post(url, formData)
+      .then((res) => {
+        console.log(res.data);
+        console.log("data:", res.data);
+        console.log("result:", res.data.result);
+        console.log("nod:", res.data.num_of_day);
+        console.log("nosD:", res.data.num_of_day_shift);
+        console.log("nosN:", res.data.num_of_night_shift);
+
+
+        // バックエンドが返すキー名に合わせてセット
+        setData(res.data.result);
+        setNod(res.data.num_of_day);
+        setNosD(res.data.num_of_day_shift);
+        setNosN(res.data.num_of_night_shift);
+      })
+      .catch(() => alert("曜日を選択してください"));
   };
 
   return (
@@ -73,13 +61,20 @@ function App() {
         <Typography variant="h2" sx={{ mb: "5rem" }}>
           ナーススケジューリング課題
         </Typography>
+
         {data ? (
           <>
-            <DenseTable data={data} num={num} />
+            <DenseTable
+              data={data}
+              firstday={num}
+              nod={nod}
+              nosD={nosD}
+              nosN={nosN}
+            />
 
             <Button
               onClick={() => {
-                setData();
+                setData("");
                 setNum();
               }}
               sx={{ ml: "96vw" }}
@@ -105,8 +100,14 @@ function App() {
             <Typography>
               シフトを作成したい月の1日の曜日を選択してください．
             </Typography>
+
             <Container
-              sx={{ display: "flex", justifyContent: "flex-start", ml: "1rem", mt: "3rem"}}
+              sx={{
+                display: "flex",
+                justifyContent: "flex-start",
+                ml: "1rem",
+                mt: "3rem",
+              }}
             >
               <FormControl>
                 <InputLabel variant="standard" htmlFor="uncontrolled-native">
@@ -114,10 +115,6 @@ function App() {
                 </InputLabel>
                 <NativeSelect
                   defaultValue={-1}
-                  inputProps={{
-                    name: "曜日を選択",
-                    id: "uncontrolled-native",
-                  }}
                   onChange={(event) => hundleChange(event.target.value)}
                   sx={{ width: "15rem" }}
                 >
@@ -131,13 +128,11 @@ function App() {
                   <option value={0}>日曜日</option>
                 </NativeSelect>
               </FormControl>
-              <Button onClick={sendFormData} sx={{ mr: "0px" }}>
-                作成
-              </Button>
+
+              <Button onClick={sendFormData}>作成</Button>
             </Container>
           </div>
         )}
-        {/* <Button onClick={getData}>Get Data</Button> */}
       </ThemeProvider>
     </div>
   );
