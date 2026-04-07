@@ -1,70 +1,153 @@
-# Getting Started with Create React App
+# ナーススケジューリングアプリ
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+本アプリは、授業の一環として開発した **ナースのシフト自動作成アプリ**です。  
+バックエンドでは数理最適化または遺伝的アルゴリズムを用いてシフト案を自動生成し、  
+フロントエンドでは MUI を用いた UI により、ブラウザから直感的に操作できます。
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+# プロダクト構成
 
-### `npm start`
+## バックエンド（Python: 数理最適化 / GA）
+- ナースの希望・制約を入力として受け取り、最適なシフトを自動生成
+- 数理最適化（最大化 / 最小化問題）または GA（遺伝的アルゴリズム）で解を探索
+- REST API としてフロントエンドに結果を返却
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## フロントエンド（React + MUI）
+- ブラウザから直接 API を叩かずに操作できる UI
+- シフト表を MUI のテーブルで視覚的に表示
+- パラメータ入力 → 最適化実行 → 結果表示までをワンストップで提供
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+# 数理モデル
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+本アプリでは、ナースのシフト割り当てを以下のような最適化問題として定式化しています。
 
-### `npm run build`
+## 変数
+ナース $\( i \)$、日付 $\( d \)$、シフト種別$\( s \)$ に対して：
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+$`
+x_{i,d,s} =
+\begin{cases} 
+1 & \text{ナース } i \text{ が} d \text{日の }\text{ にシフト } s \text{ に入る場合} \\
+0 & \text{それ以外}
+\end{cases}
+`$
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 目的関数（例：希望を最大化）
+$`
+\max \sum_{i,d,s} w_{i,d,s} \cdot x_{i,d,s}
+`$
 
-### `npm run eject`
+$\( w_{i,d,s} \)：希望度（希望シフトなら 1、嫌なシフトなら -1 など）$
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 制約条件（Constraints）
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 1. 1 日に 1 つの勤務区分のみ
+$$
+\sum_{c \in \{/,D,N\}} x_{i,d,c} = 1
+$$
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 2. 必要人数制約（平日 / 休日）
 
-## Learn More
+#### 平日（weekday ≠ 0,6）
+$$
+\sum_i x_{i,d,D} = 6
+$$
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+$$
+\sum_i x_{i,d,N} = 1
+$$
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+#### 土日（weekday = 0 \text{ or } 6）
+$$
+\sum_i x_{i,d,D} = 2
+$$
 
-### Code Splitting
+$$
+\sum_i x_{i,d,N} = 1
+$$
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+---
 
-### Analyzing the Bundle Size
+### 3. 勤務回数の上限
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+#### 総勤務回数（D + N）は 20 回以内
+$$
+\sum_d x_{i,d,D} + \sum_d x_{i,d,N} \le 20
+$$
 
-### Making a Progressive Web App
+#### 夜勤は 5 回以内
+$$
+\sum_d x_{i,d,N} \le 5
+$$
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+### 4. 禁止シフト（連続勤務の禁止）
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+禁止パターン：  
+- ND（夜勤 → 日勤）  
+- NN（夜勤 → 夜勤）  
+- N/N（夜勤 → 休み → 夜勤）
 
-### Deployment
+一般形：
+$$
+\sum_{h=0}^{t} x_{i, d - t + h, q_h} \le t
+$$
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+代表例（ND）：
+$$
+x_{i,d,N} + x_{i,d+1,D} \le 1
+$$
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### 5. 変数定義
+$$
+x_{i,d,c} =
+\begin{cases}
+1 & \text{ナース } i \text{ が日 } d \text{ に勤務 } c \text{ の場合} \\
+0 & \text{それ以外}
+\end{cases}
+$$
+
+
+---
+
+# Setup（環境構築）
+
+本アプリは **FastAPI（バックエンド）** と **React + MUI（フロントエンド）** の 2 つで構成されています。
+
+---
+
+## Backend（FastAPI）
+
+### 依存パッケージのインストール
+
+```
+
+pip install -r requirements.txt
+
+
+```
+
+### 起動
+```
+
+uvicorn main:app --reload
+
+```
+起動後、API は以下でアクセスできます：
+
+• http://localhost:8000/ga/start
+
+• http://localhost:8000/ga/status/{job_id}
+
+• http://localhost:8000/ga/result/{job_id}
+
+• http://localhost:8000/posts （PuLP 版）
