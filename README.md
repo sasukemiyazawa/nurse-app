@@ -17,6 +17,8 @@
 - ブラウザから直接 API を叩かずに操作できる UI
 - シフト表を MUI のテーブルで視覚的に表示
 - パラメータ入力 → 最適化実行 → 結果表示までをワンストップで提供
+  <img width="1099" height="477" alt="スクリーンショット 2026-03-23 16 34 28" src="https://github.com/user-attachments/assets/8bb5ed9c-1472-437f-8b21-9917b39e7fa3" />
+<img width="769" height="511" alt="スクリーンショット 2026-03-23 16 36 25" src="https://github.com/user-attachments/assets/a0d12039-e453-4e20-b7da-78c04a11ce1f" />
 
 ---
 
@@ -125,13 +127,13 @@ $$
 
 ---
 
-## Backend（FastAPI）
+## Frontend（React + MUI）
 
 ### 依存パッケージのインストール
 
 ```
 
-pip install -r requirements.txt
+npm install
 
 
 ```
@@ -139,15 +141,14 @@ pip install -r requirements.txt
 ### 起動
 ```
 
-uvicorn main:app --reload
+npm start
 
 ```
-起動後、API は以下でアクセスできます：
+起動後、http://localhost:3000  でアプリを利用できます。
 
-• http://localhost:8000/ga/start
+実際にシフトを作成する場合はバックエンドも合わせて起動する必要があります。
 
-• http://localhost:8000/ga/status/{job_id}
+https://github.com/sasukemiyazawa/nurse-api
 
-• http://localhost:8000/ga/result/{job_id}
 
-• http://localhost:8000/posts （PuLP 版）
+
